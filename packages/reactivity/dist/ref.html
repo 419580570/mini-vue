@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Document</title>
+  </head>
+  <body>
+    <!-- <script src="../../../node_modules/@vue/reactivity/dist/reactivity.global.js"></script> -->
+    <script src="./reactivity.global.js"></script>
+    <div id="app"></div>
+    <script>
+      const { ref, effect, reactive, toRefs } = VueReactivity;
+      const flag = ref(false)
+
+      console.log(app)
+
+      effect(() => {
+        app.innerHTML = flag.value ? '你好' : '不好'
+      })
+
+
+
+      setTimeout(() => {
+        flag.value = true
+      }, 1000);
+
+    </script>
+  </body>
+</html>

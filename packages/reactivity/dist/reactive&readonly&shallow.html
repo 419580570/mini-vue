@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Document</title>
+  </head>
+  <body>
+    <!-- <script src="../../../node_modules/@vue/reactivity/dist/reactivity.global.js"></script> -->
+    <script src="./reactivity.global.js"></script>
+    <div id="app"></div>
+    <script>
+      const { effect, reactive, readonly, shallowReadonly, isReactive } = VueReactivity;
+      const flag = readonly({
+        foo: 1,
+        bar: { baz: 2 },
+      });
+      console.log(isReactive(flag.bar))
+
+      effect(() => {
+        app.innerHTML = flag.bar.baz;
+      });
+
+      setTimeout(() => {
+        flag.bar.baz = 5;
+      }, 1000);
+    </script>
+  </body>
+</html>

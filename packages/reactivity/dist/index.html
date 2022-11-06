@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Document</title>
+  </head>
+  <body>
+    <!-- <script src="../../../node_modules/@vue/reactivity/dist/reactivity.global.js"></script> -->
+    <script src="./reactivity.global.js"></script>
+    <div id="app"></div>
+
+    <script>
+      // const { effect, reactive } = VueReactivity;
+      // const state = reactive({ name: "zf", age: 13, address: { num: 517 } });
+      // // const state2 = shallowReactive({ name: "zf", age: 13, address: { num: 517 } });
+      // // console.log(state1.address);
+      // // console.log(state2.address);
+
+      // effect(() => {
+      //   state.age = Math.random()
+      //   app.innerHTML = state.name + "今年" + state.age + "碎了";
+      // });
+
+      // state.address
+
+      // setTimeout(() => {
+      //   state.age++;
+      // }, 1100);
+
+
+
+      // const { effect, reactive } = VueReactivity;
+      // const state = reactive({ flag: true, name: "zf", age: 13, address: { num: 517 } });
+
+      // effect(() => {
+      //   console.log('render');
+      //   document.body.innerHTML = state.flag ? state.name : state.age
+      // });
+
+      // state.address
+
+      // setTimeout(() => {
+      //   state.flag = false
+      //   setTimeout(() => {
+      //     state.name = '_zf'
+      //   }, 1000);
+      // }, 1100);
+
+
+
+      // const { effect, reactive } = VueReactivity;
+      // const state = reactive({ flag: true, name: "zf", age: 13});
+      // let runner = effect(() => {
+      //   document.body.innerHTML = state.age
+      // })
+      // runner.effect.stop()
+
+      // setTimeout(() => {
+      //   state.age = 1000
+      //   setTimeout(() => {
+      //     runner()
+      //   }, 2000);
+      // }, 1000);
+
+
+      /* 调度器 */
+      let waiting = false
+      const { effect, reactive } = VueReactivity;
+      const state = reactive({ flag: true, name: "zf", age: 13});
+      let runner = effect(() => {
+        document.body.innerHTML = state.age
+      }, {
+        scheduler() {
+          if(!waiting) {
+          console.log('run');
+            waiting = true
+            setTimeout(() => {
+              runner()
+              waiting = false
+            }, 1000);
+          }
+        }
+      })
+
+      state.age = 1000
+      state.age = 2000
+      state.age = 3000
+      state.age = 4000
+      state.age = 5000
+      
+    </script>
+  </body>
+</html>
