@@ -57,6 +57,8 @@ function setupStatefulComponent(instance) {
     setCurrentInstance(null);
 
     handleSetupResult(instance, setupResult);
+  } else {
+    finishComponentSetup(instance)
   }
 }
 

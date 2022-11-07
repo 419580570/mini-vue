@@ -4,3 +4,5 @@ export { renderSlot } from "./helpers/renderSlot";
 export { getCurrentInstance } from "./component";
 
 export * from "./vnode";
+
+export * from "@vue/reactivity";

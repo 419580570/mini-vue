@@ -9,6 +9,8 @@ import {
   Text,
 } from "./vnode";
 import { effect } from "@vue/reactivity";
+import { shouldUpdateComponent } from "./componentRenderUtils";
+import { queueJob } from "./scheduler";
 
 export function createRenderer(renderOptions) {
   const {
@@ -86,6 +88,7 @@ export function createRenderer(renderOptions) {
 
         instance.isMounted = true;
       } else {
+        console.log("componentUpdate")
         const { next, vnode } = instance;
 
         if (next) {
@@ -100,14 +103,15 @@ export function createRenderer(renderOptions) {
 
         const prevTree = instance.subTree;
         instance.subTree = nextTree;
-
         patch(prevTree, nextTree, prevTree.el, null, instance);
       }
     }
-
     instance.update = effect(componentUpdateFn, {
       scheduler: () => {
-        // queueJob(instance.update)
+        console.log('beforeUpdate')
+        // instance.update();
+        queueJob(instance.update)
+        console.log('afterUpdate')
       },
     });
   }
@@ -306,6 +310,19 @@ export function createRenderer(renderOptions) {
     patchChildren(n1, n2, el, anchor, parentComponent);
   };
 
+  const patchComponent = (n1, n2, container) => {
+    const instance = (n2.component = n1.component);
+
+    if (shouldUpdateComponent(n1, n2)) {
+      instance.next = n2;
+      instance.update();
+    } else {
+      n2.component = n1.component;
+      n2.el = n1.el;
+      instance.vnode = n2
+    }
+  };
+
   const processText = (n1, n2, container) => {
     if (n1 === null) {
       //初始化渲染
@@ -339,7 +356,7 @@ export function createRenderer(renderOptions) {
     if (n1 == null) {
       mountComponent(n2, container, parentComponent);
     } else {
-      // patchComponent(n1, n2, container, parentComponent)
+      patchComponent(n1, n2, container);
     }
   };
 
