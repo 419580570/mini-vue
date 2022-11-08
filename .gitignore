@@ -1,2 +1,3 @@
 node_modules/
-*.js
+packages/**/dist/*.js
+packages/**/dist/*.map
