@@ -8,7 +8,7 @@ import {
   normalizeVNode,
   Text,
 } from "./vnode";
-import { effect } from "@vue/reactivity";
+import { ReactiveEffect } from "@vue/reactivity";
 import { shouldUpdateComponent } from "./componentRenderUtils";
 import { queueJob } from "./scheduler";
 
@@ -76,6 +76,8 @@ export function createRenderer(renderOptions) {
   function setupRenderEffect(instance, initialVNode, container) {
     function componentUpdateFn() {
       if (!instance.isMounted) {
+        // 组件更新时允许触发本身effect
+        toggleRecurse(instance, true)
         const proxyToUse = instance.proxy;
 
         const subTree = (instance.subTree = normalizeVNode(
@@ -88,7 +90,6 @@ export function createRenderer(renderOptions) {
 
         instance.isMounted = true;
       } else {
-        console.log("componentUpdate")
         const { next, vnode } = instance;
 
         if (next) {
@@ -106,14 +107,19 @@ export function createRenderer(renderOptions) {
         patch(prevTree, nextTree, prevTree.el, null, instance);
       }
     }
-    instance.update = effect(componentUpdateFn, {
-      scheduler: () => {
-        console.log('beforeUpdate')
-        // instance.update();
-        queueJob(instance.update)
-        console.log('afterUpdate')
-      },
-    });
+    const effect = (instance.effect = new ReactiveEffect(
+      componentUpdateFn,
+      () => queueJob(update),
+      // instance.scope
+    ))
+    const update = (instance.update = () => effect.run())
+    update()
+    // instance.update = effect(componentUpdateFn, {
+    //   scheduler: () => {
+    //     // instance.update();
+    //     queueJob(instance.update)
+    //   },
+    // });
   }
 
   function updateComponentPreRender(instance, nextVNode) {
@@ -398,4 +404,10 @@ export function createRenderer(renderOptions) {
   return {
     render,
   };
+}
+function toggleRecurse(
+  { effect, update },
+  allowed: boolean
+) {
+  effect.allowRecurse = update.allowRecurse = allowed
 }

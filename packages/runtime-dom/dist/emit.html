@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Document</title>
+  </head>
+  <body>
+    <div id="app"></div>
+    <!-- <script src="../../../node_modules/@vue/runtime-dom/dist/runtime-dom.global.js"></script> -->
+    <script src="./runtime-dom.global.js"></script>
+    <!-- <script src="../../reactivity/dist/reactivity.global.js"></script> -->
+
+    <script>
+      let { h, render, ref } = VueRuntimeDOM;
+
+      const foo = ref("foo");
+      const bar = ref("bar");
+      const Foo = {
+        setup(props, { emit }) {
+          console.log(props);
+          setTimeout(() => {
+            emit("foo");
+            emit("bar");
+          }, 2000);
+          return () => h("foo");
+        },
+      };
+
+      const App = {
+        name: "App",
+        setup() {
+          const onFoo = () => {
+            foo.value = "foooo";
+          };
+          const onBar = () => {
+            bar.value = "barrr";
+          };
+          return () =>
+            h("div", {}, [
+              h(Foo, { onFoo, onBar }),
+              h(
+                "div",
+                { style: { color: "red", fontSize: "55px" } },
+                `${foo.value}---${bar.value}`
+              ),
+            ]);
+        },
+      };
+      render(h(App), app);
+    </script>
+  </body>
+</html>

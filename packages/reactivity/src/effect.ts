@@ -1,17 +1,19 @@
 export let activeEffect = undefined;
 
 function cleanupEffect(effect) {
-  const {deps} = effect
+  const { deps } = effect;
   for (let i = 0; i < deps.length; i++) {
     deps[i].delete(effect);
   }
-  effect.deps.length = 0
+  effect.deps.length = 0;
 }
 
 export class ReactiveEffect {
   public parent = null;
   public deps = [];
   public active: boolean = true;
+  public onStop?: () => void;
+  public allowRecurse?: boolean;
   constructor(public fn, public scheduler) {}
 
   run() {
@@ -23,7 +25,7 @@ export class ReactiveEffect {
       this.parent = activeEffect;
       activeEffect = this;
 
-      cleanupEffect(this)
+      cleanupEffect(this);
       return this.fn();
     } finally {
       activeEffect = this.parent;
@@ -32,20 +34,20 @@ export class ReactiveEffect {
   }
 
   stop() {
-    if(this.active) {
-      this.active = false
-      cleanupEffect(this)
+    if (this.active) {
+      this.active = false;
+      cleanupEffect(this);
     }
   }
 }
 
-export function effect(fn, options:any = {}) {
+export function effect(fn, options: any = {}) {
   const _effect = new ReactiveEffect(fn, options.scheduler);
   _effect.run();
 
-  const runner = _effect.run.bind(_effect)
-  runner.effect = _effect
-  return runner
+  const runner = _effect.run.bind(_effect);
+  runner.effect = _effect;
+  return runner;
 }
 
 const targetMap = new WeakMap();
@@ -59,11 +61,11 @@ export function track(target, type, key) {
   if (!dep) {
     depsMap.set(key, (dep = new Set()));
   }
-  trackEffects(dep)
+  trackEffects(dep);
 }
 
 export function trackEffects(dep) {
-  if(activeEffect) {
+  if (activeEffect) {
     let shouldTrack = !dep.has(activeEffect);
     if (shouldTrack) {
       dep.add(activeEffect);
@@ -77,19 +79,19 @@ export function trigger(target, type, key, value, oldValue) {
   if (!depsMap) return;
 
   let effects = depsMap.get(key);
-  if(effects) {
-    triggerEffects(effects)
+  if (effects) {
+    triggerEffects(effects);
   }
 }
 
 export function triggerEffects(effects: Set<any>) {
-  effects = new Set(effects)
+  effects = new Set(effects);
   effects.forEach(effect => {
-    if(effect !== activeEffect) {
-      if(effect.scheduler) {
-        effect.scheduler()
+    if (effect !== activeEffect || effect.allowRecurse) {
+      if (effect.scheduler) {
+        effect.scheduler();
       } else {
-        effect.run()
+        effect.run();
       }
     }
   });

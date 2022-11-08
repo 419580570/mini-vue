@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Document</title>
+  </head>
+  <body>
+    <div id="app"></div>
+    <!-- <script src="../../../node_modules/@vue/runtime-dom/dist/runtime-dom.global.js"></script> -->
+    <script src="./runtime-dom.global.js"></script>
+    <!-- <script src="../../reactivity/dist/reactivity.global.js"></script> -->
+
+    <script>
+      let { h, render, provide, inject } = VueRuntimeDOM;
+
+      const ProviderOne = {
+        setup() {
+          provide("foo", "foo");
+          provide("bar", "bar");
+          return () => h(ProviderTwo);
+        },
+      };
+
+      const ProviderTwo = {
+        setup() {
+          provide("foo", "fooOverride");
+          provide("baz", "baz");
+          const foo = inject("foo");
+          console.log(foo);
+
+          return () => h(Consumer);
+        },
+      };
+
+      const Consumer = {
+        setup() {
+          const foo = inject("foo");
+          const bar = inject("bar");
+          const baz = inject("baz");
+          return () => {
+            return h("div", {}, `${foo}-${bar}-${baz}`);
+          };
+        },
+      };
+
+      const App = {
+        name: "App",
+        setup() {
+          return () => h("div", {}, [h("p", {}, "apiInject"), h(ProviderOne)]);
+        },
+      };
+      render(h(App), app);
+    </script>
+  </body>
+</html>
