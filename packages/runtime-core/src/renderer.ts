@@ -11,6 +11,8 @@ import {
 import { ReactiveEffect } from "@vue/reactivity";
 import { shouldUpdateComponent } from "./componentRenderUtils";
 import { queueJob } from "./scheduler";
+import { createAppAPI } from "./apiCreateApp";
+
 
 export function createRenderer(renderOptions) {
   const {
@@ -403,8 +405,10 @@ export function createRenderer(renderOptions) {
   };
   return {
     render,
+    createApp: createAppAPI(render)
   };
 }
+
 function toggleRecurse(
   { effect, update },
   allowed: boolean

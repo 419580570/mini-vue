@@ -1,9 +1,12 @@
 import { shallowReadonly } from "@vue/reactivity";
 import { proxyRefs } from "@vue/reactivity";
+import { createAppContext } from "./apiCreateApp";
 import { emit } from "./componentEmits";
 import { initProps } from "./componentProps";
 import { PublicInstanceProxyHandlers } from "./componentPublicInstance";
 import { initSlots } from "./componentSlots";
+
+const emptyAppContext = createAppContext();
 
 export function createComponentInstance(vnode, parent) {
   const instance = {
@@ -12,6 +15,8 @@ export function createComponentInstance(vnode, parent) {
     next: null, // 需要更新的 vnode，用于更新 component 类型的组件
     props: {},
     parent,
+    appContext:
+      (parent ? parent.appContext : vnode.appContext) || emptyAppContext,
     provides: parent ? parent.provides : {}, //  获取 parent 的 provides 作为当前组件的初始化值 这样就可以继承 parent.provides 的属性了
     proxy: null,
     isMounted: false,
@@ -42,7 +47,7 @@ export function setupComponent(instance) {
 }
 
 function setupStatefulComponent(instance) {
-  instance.proxy = new Proxy(instance.ctx, PublicInstanceProxyHandlers)
+  instance.proxy = new Proxy(instance.ctx, PublicInstanceProxyHandlers);
 
   const Component = instance.type;
   const { setup } = Component;
@@ -58,7 +63,7 @@ function setupStatefulComponent(instance) {
 
     handleSetupResult(instance, setupResult);
   } else {
-    finishComponentSetup(instance)
+    finishComponentSetup(instance);
   }
 }
 
@@ -72,26 +77,26 @@ function createSetupContext(instance) {
 }
 
 function handleSetupResult(instance, setupResult) {
-  if(typeof setupResult === 'function') {
-    instance.render = setupResult
-  } else if(typeof setupResult === 'object') {
-    instance.setupState = proxyRefs(setupResult)
+  if (typeof setupResult === "function") {
+    instance.render = setupResult;
+  } else if (typeof setupResult === "object") {
+    instance.setupState = proxyRefs(setupResult);
   }
 
-  finishComponentSetup(instance)
+  finishComponentSetup(instance);
 }
 
 function finishComponentSetup(instance) {
-  const Component = instance.type
-  if(!instance.render) {
-    if(compile && !Component.render) {
-      if(Component.template) {
-        const template = Component.template
-        Component.render = compile(template)
+  const Component = instance.type;
+  if (!instance.render) {
+    if (compile && !Component.render) {
+      if (Component.template) {
+        const template = Component.template;
+        Component.render = compile(template);
       }
     }
 
-    instance.render = Component.render
+    instance.render = Component.render;
   }
 }
 

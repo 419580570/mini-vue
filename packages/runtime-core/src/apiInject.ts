@@ -1,33 +1,36 @@
 import { getCurrentInstance } from "./component";
 
 export function provide(key, value) {
-  const currentInstance = getCurrentInstance()
+  const currentInstance = getCurrentInstance();
 
-  if(currentInstance) {
-    let { provides } = currentInstance
+  if (currentInstance) {
+    let { provides } = currentInstance;
 
-    const parentProvides = currentInstance.parent?.provides
+    const parentProvides = currentInstance.parent?.provides;
 
-    if(parentProvides === provides) {
-      provides = currentInstance.provides = Object.create(parentProvides)
+    if (parentProvides === provides) {
+      provides = currentInstance.provides = Object.create(parentProvides);
     }
 
-    provides[key] = value
+    provides[key] = value;
   }
 }
 
 export function inject(key, defaultValue) {
-  const currentInstance = getCurrentInstance()
+  const currentInstance = getCurrentInstance();
 
-  if(currentInstance) {
-    const provides = currentInstance.parent.provides
-    if(key in provides) {
-      return provides[key]
+  if (currentInstance) {
+    const provides =
+      currentInstance.parent === null
+        ? currentInstance.vnode.appContext?.provides
+        : currentInstance.parent.provides;
+    if (key in provides) {
+      return provides[key];
     } else if (defaultValue) {
-      if(typeof defaultValue === 'function') {
-        return defaultValue()
+      if (typeof defaultValue === "function") {
+        return defaultValue();
       }
-      return defaultValue
+      return defaultValue;
     }
   }
 }

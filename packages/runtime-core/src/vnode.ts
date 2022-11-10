@@ -9,7 +9,7 @@ export function isSameVnode(n1, n2) { //判断两个虚拟节点是否相同节�
   return (n1.type === n2.type) && (n1.key === n2.key)
 }
 
-export function createVnode(type, props, children = null) {
+export function createVnode(type, props?, children = null) {
   let shapeFlag = isString(type) ? ShapeFlags.ELEMENT : ShapeFlags.STATEFUL_COMPONENT;
 
   const vnode = {
@@ -21,6 +21,7 @@ export function createVnode(type, props, children = null) {
     key: props?.['key'],
     shapeFlag,
     __v_isVNode: true,
+    appContext: null
   }
 
   if(children) {

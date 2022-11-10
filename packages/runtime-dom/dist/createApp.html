@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Document</title>
+  </head>
+  <body>
+    <div id="app"></div>
+    <script src="./runtime-dom.global.js"></script>
+    <script>
+      let { createApp, h , getCurrentInstance, inject } = VueRuntimeDOM;
+      // createApp
+      let app = createApp({
+        setup() {
+          const { appContext } = getCurrentInstance()
+          console.log(inject("test-provide"), inject("foo"), inject("bar"), inject("baz"))
+          const testComponent = appContext.components["test-component"]
+          return {
+            testComponent
+          }
+        },
+        render() {
+          return h(this.testComponent, {}, "test")
+        }
+      })
+      //component
+      app.component("test-component", {
+        render() {
+          return h('div', {}, "test-component")
+        }
+      })
+      //provide
+      app.provide("test-provide", "test-provide")
+
+      //use
+      const PluginA = app => app.provide('foo', 1)
+      const PluginB = {
+        install: (app, arg1, arg2) => app.provide('bar', arg1 + arg2)
+      }
+      class PluginC {
+        someProperty = {}
+        static install() {
+          app.provide('baz', 2)
+        }
+      }
+      const PluginD = undefined
+      app.use(PluginA)
+      app.use(PluginB, 21, 10)
+      app.use(PluginC)
+      app.use(PluginA)
+      app.use(PluginD)
+
+      // mount
+      app.mount("#app")
+
+      // unmount
+      // setTimeout(() => {
+      //   app.unmount()
+      //   console.log(app)
+      // }, 2000);
+
+    </script>
+  </body>
+</html>

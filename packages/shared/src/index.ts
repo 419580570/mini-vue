@@ -1,3 +1,7 @@
+export const NO = () => false
+
+export const NOOP = () => {}
+
 export const isObject = (value) => {
   return typeof value === "object" && value !== null
 }
