@@ -10,9 +10,9 @@ import {
 } from "./vnode";
 import { ReactiveEffect } from "@vue/reactivity";
 import { shouldUpdateComponent } from "./componentRenderUtils";
-import { queueJob } from "./scheduler";
+import { queueJob, queuePostFlushCb } from "./scheduler";
 import { createAppAPI } from "./apiCreateApp";
-
+import { invokeArrayFns } from "vue";
 
 export function createRenderer(renderOptions) {
   const {
@@ -78,8 +78,12 @@ export function createRenderer(renderOptions) {
   function setupRenderEffect(instance, initialVNode, container) {
     function componentUpdateFn() {
       if (!instance.isMounted) {
+        const { bm, m, parent } = instance;
         // 组件更新时允许触发本身effect
-        toggleRecurse(instance, true)
+        toggleRecurse(instance, true);
+        if(bm) {
+          invokeArrayFns(bm)
+        }
         const proxyToUse = instance.proxy;
 
         const subTree = (instance.subTree = normalizeVNode(
@@ -89,6 +93,10 @@ export function createRenderer(renderOptions) {
         patch(null, subTree, container, null, instance);
 
         initialVNode.el = subTree.el;
+
+        if(m) {
+          queuePostFlushCb(m)
+        }
 
         instance.isMounted = true;
       } else {
@@ -111,11 +119,11 @@ export function createRenderer(renderOptions) {
     }
     const effect = (instance.effect = new ReactiveEffect(
       componentUpdateFn,
-      () => queueJob(update),
+      () => queueJob(update)
       // instance.scope
-    ))
-    const update = (instance.update = () => effect.run())
-    update()
+    ));
+    const update = (instance.update = () => effect.run());
+    update();
     // instance.update = effect(componentUpdateFn, {
     //   scheduler: () => {
     //     // instance.update();
@@ -327,7 +335,7 @@ export function createRenderer(renderOptions) {
     } else {
       n2.component = n1.component;
       n2.el = n1.el;
-      instance.vnode = n2
+      instance.vnode = n2;
     }
   };
 
@@ -405,13 +413,10 @@ export function createRenderer(renderOptions) {
   };
   return {
     render,
-    createApp: createAppAPI(render)
+    createApp: createAppAPI(render),
   };
 }
 
-function toggleRecurse(
-  { effect, update },
-  allowed: boolean
-) {
-  effect.allowRecurse = update.allowRecurse = allowed
+function toggleRecurse({ effect, update }, allowed: boolean) {
+  effect.allowRecurse = update.allowRecurse = allowed;
 }

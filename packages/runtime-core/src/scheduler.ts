@@ -1,5 +1,8 @@
+import { isArray } from "@vue/shared";
+
 const queue: any[] = [];
-const activePreFlushCbs: any = [];
+const pendingPostFlushCbs = []
+let activePostFlushCbs = null
 
 const p = Promise.resolve();
 let isFlushPending = false;
@@ -11,20 +14,43 @@ export function queueJob(job) {
   }
 }
 
+export function queuePostFlushCb(cb) {
+  if(!isArray(cb)) {
+    if(!activePostFlushCbs) {
+      pendingPostFlushCbs.push(cb)
+    }
+  } else {
+    pendingPostFlushCbs.push(...cb)
+  }
+  queueFlush();
+}
+
+// function queueCb(cb, activeQueue) {
+//   activeQueue.push(cb);
+//   queueFlush();
+// }
+
 function queueFlush() {
   if (isFlushPending) return;
   isFlushPending = true;
   nextTick(flushJobs);
 }
 
-export function nextTick(fn?) {
-  return fn ? p.then(fn) : p;
+const comparator = (a, b) => {
+  const aId = a === null ? Infinity : a.id
+  const bId = b === null ? Infinity : b.id
+  const diff = aId - bId
+  if(diff === 0) {
+    if (a.pre && !b.pre) return -1
+    if (b.pre && !a.pre) return 1
+  }
+  return diff
 }
 
 function flushJobs() {
   isFlushPending = false;
-  // 执行前置队列
-  flushPreFlushCbs();
+
+  queue.sort(comparator)
 
   try {
     let job;
@@ -34,24 +60,35 @@ function flushJobs() {
       }
     }
   } finally {
+    flushPostFlushCbs()
     // 执行过程中产生了新的队列，那么继续执行回调
-    if(queue.length) {
+    if(queue.length || pendingPostFlushCbs.length) {
       flushJobs()
     }
   }
 }
 
-function flushPreFlushCbs() {
-  for (let i = 0; i < activePreFlushCbs.length; i++) {
-    activePreFlushCbs[i]();
+function flushPostFlushCbs() {
+  if(pendingPostFlushCbs.length) {
+    const deduped = [...new Set(pendingPostFlushCbs)]
+    pendingPostFlushCbs.length = 0
+
+    if(activePostFlushCbs) {
+      activePostFlushCbs.push(...deduped)
+      return
+    }
+
+    activePostFlushCbs = deduped
+
+    for(let i = 0; i < activePostFlushCbs.length; i++) {
+      activePostFlushCbs[i]()
+    }
+    activePostFlushCbs = null
   }
 }
 
-export function queuePreFlushCb(cb) {
-  queueCb(cb, activePreFlushCbs);
-}
 
-function queueCb(cb, activeQueue) {
-  activeQueue.push(cb);
-  queueFlush();
+
+export function nextTick(fn?) {
+  return fn ? p.then(fn) : p;
 }

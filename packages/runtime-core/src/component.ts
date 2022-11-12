@@ -6,10 +6,30 @@ import { initProps } from "./componentProps";
 import { PublicInstanceProxyHandlers } from "./componentPublicInstance";
 import { initSlots } from "./componentSlots";
 
+export const enum LifecycleHooks {
+  BEFORE_CREATE = 'bc',
+  CREATED = 'c',
+  BEFORE_MOUNT = 'bm',
+  MOUNTED = 'm',
+  BEFORE_UPDATE = 'bu',
+  UPDATED = 'u',
+  BEFORE_UNMOUNT = 'bum',
+  UNMOUNTED = 'um',
+  DEACTIVATED = 'da',
+  ACTIVATED = 'a',
+  RENDER_TRIGGERED = 'rtg',
+  RENDER_TRACKED = 'rtc',
+  ERROR_CAPTURED = 'ec',
+  SERVER_PREFETCH = 'sp'
+}
+
 const emptyAppContext = createAppContext();
+
+let uid = 0
 
 export function createComponentInstance(vnode, parent) {
   const instance = {
+    uid: uid++,
     type: vnode.type,
     vnode,
     next: null, // 需要更新的 vnode，用于更新 component 类型的组件
@@ -34,6 +54,10 @@ export function createComponentInstance(vnode, parent) {
   };
 
   instance.emit = emit.bind(null, instance) as any;
+
+  if(vnode.ce) {
+    vnode.ce(instance)
+  }
   return instance;
 }
 
@@ -100,7 +124,7 @@ function finishComponentSetup(instance) {
   }
 }
 
-let currentInstance = {};
+export let currentInstance = {};
 
 export function getCurrentInstance(): any {
   return currentInstance;

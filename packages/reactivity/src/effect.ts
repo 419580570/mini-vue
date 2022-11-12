@@ -41,6 +41,24 @@ export class ReactiveEffect {
   }
 }
 
+export let shouldTrack = true
+const trackStack = []
+
+export function pauseTracking() {
+  trackStack.push(shouldTrack)
+  shouldTrack = false
+}
+
+export function enableTracking() {
+  trackStack.push(shouldTrack)
+  shouldTrack = true
+}
+
+export function resetTracking() {
+  const last = trackStack.pop()
+  shouldTrack = last === undefined ? true : last
+}
+
 export function effect(fn, options: any = {}) {
   const _effect = new ReactiveEffect(fn, options.scheduler);
   _effect.run();
@@ -52,7 +70,7 @@ export function effect(fn, options: any = {}) {
 
 const targetMap = new WeakMap();
 export function track(target, type, key) {
-  if (!activeEffect) return;
+  if (!shouldTrack || !activeEffect) return;
   let depsMap = targetMap.get(target);
   if (!depsMap) {
     targetMap.set(target, (depsMap = new Map()));
