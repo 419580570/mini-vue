@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Document</title>
+  </head>
+  <body>
+    <div id="app"></div>
+    <!-- <script src="../../../node_modules/@vue/runtime-dom/dist/runtime-dom.global.js"></script> -->
+    <script src="./runtime-dom.global.js"></script>
+    <!-- <script src="../../reactivity/dist/reactivity.global.js"></script> -->
+
+    <script>
+      let {
+        createRenderer,
+        h,
+        render,
+        ref,
+        onBeforeMount,
+        onMounted,
+        onBeforeUpdate,
+        onUpdated,
+        onBeforeUnmount,
+        onUnmounted,
+        nextTick
+      } = VueRuntimeDOM;
+
+      const Comp = {
+        setup() {
+          const count = ref(0)
+          onBeforeMount((arg) => {
+            console.log('BeforeMount')
+          });
+          onMounted(() => {
+            count.value++
+            console.log('Mounted')
+          })
+          nextTick(() => {
+            console.log("testBeforeMount")
+          })
+          onBeforeUpdate(() => {
+            console.log("BeforeUpdate" + app.innerHTML)
+          })
+          onUpdated(() => {
+            console.log("Update" + app.innerHTML)
+          })
+          setTimeout(() => {
+            count.value = -1
+          }, 1000);
+          return () => (count.value >= 0 ? h(Child, {value: count.value}): null);
+        },
+      };
+      const Child = {
+        setup(props) {
+          onBeforeMount((arg) => {
+            console.log('Child--BeforeMount')
+          });
+          onMounted(() => {
+            console.log('Child--Mounted')
+          })
+          onBeforeUnmount(() => {
+            console.log("BeforeUnmount" + app.innerHTML)
+          })
+          onUnmounted(() => {
+            console.log("Unmount" + app.innerHTML)
+          })
+          return () => h('div', props.value)
+        }
+      }
+      render(h(Comp), app);
+    </script>
+  </body>
+</html>

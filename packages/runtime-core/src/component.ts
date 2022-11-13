@@ -1,5 +1,6 @@
 import { shallowReadonly } from "@vue/reactivity";
 import { proxyRefs } from "@vue/reactivity";
+import { isFunction, isObject, NOOP } from "@vue/shared";
 import { createAppContext } from "./apiCreateApp";
 import { emit } from "./componentEmits";
 import { initProps } from "./componentProps";
@@ -101,10 +102,16 @@ function createSetupContext(instance) {
 }
 
 function handleSetupResult(instance, setupResult) {
-  if (typeof setupResult === "function") {
+  if (isFunction(setupResult)) {
     instance.render = setupResult;
-  } else if (typeof setupResult === "object") {
+  } else if (isObject(setupResult)) {
     instance.setupState = proxyRefs(setupResult);
+  } else if(setupResult !== undefined) {
+    console.warn(`
+      setup() should return an object. Received: ${
+        setupResult === null ? 'null' : typeof setupResult
+      }
+    `)
   }
 
   finishComponentSetup(instance);
@@ -120,7 +127,7 @@ function finishComponentSetup(instance) {
       }
     }
 
-    instance.render = Component.render;
+    instance.render = Component.render || NOOP;
   }
 }
 

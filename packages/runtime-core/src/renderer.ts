@@ -7,12 +7,13 @@ import {
   isSameVnode,
   normalizeVNode,
   Text,
+  Comment,
 } from "./vnode";
 import { ReactiveEffect } from "@vue/reactivity";
 import { shouldUpdateComponent } from "./componentRenderUtils";
 import { queueJob, queuePostFlushCb } from "./scheduler";
 import { createAppAPI } from "./apiCreateApp";
-import { invokeArrayFns } from "vue";
+import { invokeArrayFns } from "@vue/runtime-dom";
 
 export function createRenderer(renderOptions) {
   const {
@@ -21,14 +22,23 @@ export function createRenderer(renderOptions) {
     patchProp: hostPatchProp,
     createElement: hostCreateElement,
     createText: hostCreateText,
+    createComment: hostCreateComment,
     setText: hostSetText,
     setElementText: hostSetElementText,
     parentNode: hostParentNode,
     nextSibling: hostNextSibling,
   } = renderOptions;
 
-  const unmount = vnode => {
-    hostRemove(vnode.el);
+  const unmount = (vnode, parentComponent, doRemove = false) => {
+    const { shapeFlag, children } = vnode;
+    if (shapeFlag & ShapeFlags.COMPONENT) {
+      unmountComponent(vnode.component, doRemove);
+    } else if (shapeFlag & ShapeFlags.ARRAY_CHILDREN) {
+      unmountChildren(children, parentComponent, false);
+    }
+    if (doRemove) {
+      hostRemove(vnode.el);
+    }
   };
 
   const normalize = (children, i) => {
@@ -79,11 +89,13 @@ export function createRenderer(renderOptions) {
     function componentUpdateFn() {
       if (!instance.isMounted) {
         const { bm, m, parent } = instance;
+        toggleRecurse(instance, false);
+        // beforeMount
+        if (bm) {
+          invokeArrayFns(bm);
+        }
         // 组件更新时允许触发本身effect
         toggleRecurse(instance, true);
-        if(bm) {
-          invokeArrayFns(bm)
-        }
         const proxyToUse = instance.proxy;
 
         const subTree = (instance.subTree = normalizeVNode(
@@ -94,18 +106,25 @@ export function createRenderer(renderOptions) {
 
         initialVNode.el = subTree.el;
 
-        if(m) {
-          queuePostFlushCb(m)
+        //mounted
+        if (m) {
+          queuePostFlushCb(m);
         }
 
         instance.isMounted = true;
       } else {
-        const { next, vnode } = instance;
+        const { next, bu, u, vnode } = instance;
+        toggleRecurse(instance, false);
 
         if (next) {
           next.el = vnode.el;
           updateComponentPreRender(instance, next);
         }
+        // beforeUpdate hook
+        if (bu) {
+          invokeArrayFns(bu);
+        }
+        toggleRecurse(instance, true);
 
         const proxyToUse = instance.proxy;
         const nextTree = normalizeVNode(
@@ -115,6 +134,10 @@ export function createRenderer(renderOptions) {
         const prevTree = instance.subTree;
         instance.subTree = nextTree;
         patch(prevTree, nextTree, prevTree.el, null, instance);
+        // updated hook
+        if (u) {
+          queuePostFlushCb(u);
+        }
       }
     }
     const effect = (instance.effect = new ReactiveEffect(
@@ -122,7 +145,8 @@ export function createRenderer(renderOptions) {
       () => queueJob(update)
       // instance.scope
     ));
-    const update = (instance.update = () => effect.run());
+    const update: any = (instance.update = () => effect.run());
+    update.id = instance.uid;
     update();
     // instance.update = effect(componentUpdateFn, {
     //   scheduler: () => {
@@ -159,10 +183,28 @@ export function createRenderer(renderOptions) {
     }
   };
 
-  const unmountChildren = children => {
+  const unmountChildren = (children, parentComponent, doRemove = false) => {
     for (let i = 0; i < children.length; i++) {
-      unmount(children[i]);
+      unmount(children[i], parentComponent, doRemove);
     }
+  };
+
+  const unmountComponent = (instance, doRemove) => {
+    const { bum, um, subTree, update } = instance;
+    if (bum) {
+      invokeArrayFns(bum);
+    }
+    if (update) {
+      update.active = false;
+      unmount(subTree, instance, doRemove);
+    }
+
+    if (um) {
+      queuePostFlushCb(um);
+    }
+    queuePostFlushCb(() => {
+      instance.isUnmounted = true;
+    });
   };
 
   const patchKeyedChildren = (c1, c2, el, anchor, parentComponent) => {
@@ -213,11 +255,9 @@ export function createRenderer(renderOptions) {
       //common sequence + unmount
       // i要比e2大说明要有卸载的
       // i和e1之间的是卸载的部分
-      if (i <= e1) {
-        while (i <= e1) {
-          unmount(c1[i]);
-          i++;
-        }
+      while (i <= e1) {
+        unmount(c1[i], parentComponent, true);
+        i++;
       }
     }
 
@@ -229,18 +269,23 @@ export function createRenderer(renderOptions) {
       keyToNewIndexMap.set(c2[i].key, i);
     }
 
+    let patched = 0;
     //循环老的元素 看一下新的里面有没有，如果有说明要比较差异，没有要的添加到列表中，老的有新的没有的要删除
     const toBePatched = e2 - s2 + 1; //新的总个数
     const newIndexToOldIndexMap = new Array(toBePatched).fill(0);
 
     for (let i = s1; i <= e1; i++) {
       const oldChild = c1[i];
+      if (patched >= toBePatched) {
+        unmount(oldChild, parentComponent, true);
+      }
       let newIndex = keyToNewIndexMap.get(oldChild.key);
       if (newIndex == undefined) {
-        unmount(oldChild);
+        unmount(oldChild, parentComponent, true);
       } else {
         newIndexToOldIndexMap[newIndex - s2] = i + 1;
         patch(oldChild, c2[newIndex], el, anchor, parentComponent);
+        patched++;
       }
     }
 
@@ -288,7 +333,7 @@ export function createRenderer(renderOptions) {
       if (prevShapeFlag & ShapeFlags.ARRAY_CHILDREN) {
         // 1
         // 删除所有子节点
-        unmountChildren(c1);
+        unmountChildren(c1, parentComponent);
       }
       if (c1 !== c2) {
         // 2
@@ -300,7 +345,7 @@ export function createRenderer(renderOptions) {
           // 4
           patchKeyedChildren(c1, c2, el, anchor, parentComponent);
         } else {
-          unmountChildren(c1); // 7
+          unmountChildren(c1, parentComponent, true); // 7
         }
       } else {
         // 5, 8
@@ -351,6 +396,19 @@ export function createRenderer(renderOptions) {
     }
   };
 
+  const processCommentNode = (n1, n2, container, anchor) => {
+    if (n1 == null) {
+      hostInsert(
+        (n2.el = hostCreateComment((n2.children as string) || "")),
+        container,
+        anchor
+      );
+    } else {
+      // there's no support for dynamic comments
+      n2.el = n1.el;
+    }
+  };
+
   const processElement = (n1, n2, container, anchor, parentComponent) => {
     if (n1 === null) {
       //初始化渲染
@@ -380,13 +438,16 @@ export function createRenderer(renderOptions) {
     if (n1 === n2) return;
     if (n1 && !isSameVnode(n1, n2)) {
       //判断两个元素是否相同，不相同卸载在添加
-      unmount(n1);
+      unmount(n1, parentComponent, true);
       n1 = null;
     }
     const { type, shapeFlag } = n2;
     switch (type) {
       case Text:
         processText(n1, n2, container);
+        break;
+      case Comment:
+        processCommentNode(n1, n2, container, anchor);
         break;
       case Fragment:
         processFragment(n1, n2, container, anchor, parentComponent);
@@ -404,7 +465,7 @@ export function createRenderer(renderOptions) {
     if (vnode === null) {
       if (container._vnode) {
         // 之前渲染过
-        unmount(container._vnode);
+        unmount(container._vnode, null, true);
       }
     } else {
       patch(container._vnode || null, vnode, container);

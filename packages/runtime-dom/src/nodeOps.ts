@@ -29,4 +29,5 @@ export const nodeOps = {
   createText(text) {
     return document.createTextNode(text)
   },
+  createComment: text => document.createComment(text),
 }

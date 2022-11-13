@@ -36,10 +36,11 @@ function queueFlush() {
   nextTick(flushJobs);
 }
 
+const getId = (job) =>
+  job.id == null ? Infinity : job.id
+
 const comparator = (a, b) => {
-  const aId = a === null ? Infinity : a.id
-  const bId = b === null ? Infinity : b.id
-  const diff = aId - bId
+  const diff = getId(a) - getId(b)
   if(diff === 0) {
     if (a.pre && !b.pre) return -1
     if (b.pre && !a.pre) return 1
@@ -79,7 +80,7 @@ function flushPostFlushCbs() {
     }
 
     activePostFlushCbs = deduped
-
+    activePostFlushCbs.sort((a, b) => getId(a) - getId(b))
     for(let i = 0; i < activePostFlushCbs.length; i++) {
       activePostFlushCbs[i]()
     }
