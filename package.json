@@ -5,7 +5,8 @@
   "main": "index.js",
   "scripts": {
     "reactivity": "node scripts/dev.js reactivity -f global",
-    "runtime-dom": "node scripts/dev.js runtime-dom -f global"
+    "runtime-dom": "node scripts/dev.js runtime-dom -f global",
+    "compiler-core": "node scripts/dev.js compiler-core -f global"
   },
   "keywords": [],
   "author": "",
